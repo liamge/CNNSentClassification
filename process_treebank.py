@@ -2,7 +2,7 @@ import argparse
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--datafile', help='file containing SSTB', required=True, dest='datafile')
+    parser.add_argument('-d', '--datafile', help='directory containing SSTB', required=True, dest='datafile')
     return vars(parser.parse_args())
 
 def parse_sstb(dir, binary=False):
@@ -53,7 +53,7 @@ if __name__ == '__main__':
     print(dict.items()[:10])
     print('Outputting reformatted version to {}'.format(args['datafile'] + '/formatted_sstb.csv'))
     with open(args['datafile'] + '/formatted_sstb.csv', 'w') as writefile:
-        writefile.write('phrase, label')
+        writefile.write('phrase|label')
         writefile.write('\n')
         for (x, y) in dict.items():
             writefile.write(x + '|' + str(y))
