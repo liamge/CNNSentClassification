@@ -1,4 +1,4 @@
-mport os, warnings
+import os, warnings, re
 import torch.utils.data as data
 from sklearn.feature_extraction.text import CountVectorizer
 from spacy.en import English
@@ -21,6 +21,26 @@ def sentence_tokenize(corpus):
     else:
         raise TypeError("Error: corpus parameter was of type: {}\n"
                         "Corpus needs to be either a singleton array of a string or a string")
+
+def clean_str(string, TREC=False):
+    """
+    Tokenization/string cleaning for all datasets except for SST.
+    Every dataset is lower cased except for TREC
+    """
+    string = re.sub(r"[^A-Za-z0-9(),!?\'\`]", " ", string)
+    string = re.sub(r"\'s", " \'s", string)
+    string = re.sub(r"\'ve", " \'ve", string)
+    string = re.sub(r"n\'t", " n\'t", string)
+    string = re.sub(r"\'re", " \'re", string)
+    string = re.sub(r"\'d", " \'d", string)
+    string = re.sub(r"\'ll", " \'ll", string)
+    string = re.sub(r",", " , ", string)
+    string = re.sub(r"!", " ! ", string)
+    string = re.sub(r"\(", " \( ", string)
+    string = re.sub(r"\)", " \) ", string)
+    string = re.sub(r"\?", " \? ", string)
+    string = re.sub(r"\s{2,}", " ", string)
+    return string.strip() if TREC else string.strip().lower()
 
 class TypeError(Exception):
     '''
