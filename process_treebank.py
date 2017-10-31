@@ -50,7 +50,6 @@ if __name__ == '__main__':
     args = parse_args()
     print('loading SSTB...')
     dict = parse_sstb(args['datafile'])
-    print(dict.items()[:10])
     print('Outputting reformatted version to {}'.format(args['datafile'] + '/formatted_sstb.csv'))
     with open(args['datafile'] + '/formatted_sstb.csv', 'w') as writefile:
         writefile.write('phrase|label')

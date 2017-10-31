@@ -31,3 +31,6 @@ wget https://www.cs.cornell.edu/people/pabo/movie-review-data/review_polarity.ta
 tar -xvzf review_polarity.tar.gz
 rm review_polarity.tar.gz
 cd ../..
+
+python process_trec.py -d data/TREC/
+python process_treebank.py -d data/SSTB/stanfordSentimentTreebank
