@@ -13,7 +13,7 @@ wget http://cogcomp.org/Data/QA/QC/train_4000.label
 wget http://cogcomp.org/Data/QA/QC/train_5500.label
 cd ../test
 wget http://cogcomp.org/Data/QA/QC/TREC_10.label
-cd ../..
+cd ../../..
 
 # SSTB
 mkdir data/SSTB
