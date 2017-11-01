@@ -1,5 +1,6 @@
 import argparse, os
 from sklearn.preprocessing import LabelEncoder
+from utils import clean_str
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -15,7 +16,7 @@ def process_dir(directory):
         tmp = [(x.split()[0], ' '.join(x.split()[1:])) for x in file.split('\n')[:-1]]
         labels = [x[0] for x in tmp]
         full_labels.append(labels)
-        text = [x[1] for x in tmp]
+        text = [clean_str(x[1], TREC=True) for x in tmp]
         full_text.append(text)
 
     # Flatten list of lists
@@ -46,6 +47,6 @@ if __name__ == '__main__':
     with open(args['datafile'] + '/test/processed.csv', 'w') as writefile:
         writefile.write('phrase|label')
         writefile.write('\n')
-        for (x, y) in train_data.items():
+        for (x, y) in test_data.items():
             writefile.write(x + '|' + str(y))
             writefile.write('\n')
