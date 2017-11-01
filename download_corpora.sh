@@ -33,4 +33,4 @@ rm review_polarity.tar.gz
 cd ../..
 
 python process_trec.py -d data/TREC/
-python process_treebank.py -d data/SSTB/stanfordSentimentTreebank
+python process_treebank.py -d data/SSTB/stanfordSentimentTreebank -b True
