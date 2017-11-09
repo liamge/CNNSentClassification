@@ -1,8 +1,9 @@
 import os, warnings, re
 import numpy as np
+import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import LabelBinarizer
+from sklearn.preprocessing import LabelEncoder
 
 
 def clean_str(string, TREC=False):
@@ -155,13 +156,21 @@ class DataLoader:
         return texts
 
     def _process_file(self, file):
-        text = []
-        try:
-            text.append(open(file, 'rb').read().decode('utf-8', 'ignore'))
-        except FileNotFoundError:
-            print("Error: {} not found".format(file))
+        if file[-3:] == 'csv':
+            X, y = self._process_csv(file)
+        else:
+            pass
 
-        return text
+        return X, y
+
+    def _process_csv(self, file):
+        df = pd.read_csv(file, header=0, delimiter='|')
+        df = df[df['phrase'].notnull()]
+
+        X = df['phrase'].values
+        y = df['label'].values
+
+        return X, y
 
     def _process_list(self, l):
         '''
@@ -173,13 +182,16 @@ class DataLoader:
         y = [y[1] for y in l]
         return X, y
 
-    def batch_data(self, X, y, minibatch_size=32):
-        n = len(X)
-        idxs = np.random.permutation(n)
-        minibatches = []
+    def batch_data(self, X, y, minibatch_size=32, shuffle=True):
+        l = len(X)
+        if minibatch_size > l:
+            raise AttributeError("Error, {} must be smaller than {}".format(minibatch_size, l))
 
-        for i in range(minibatch_size, n, minibatch_size):
-            minibatches.append([X[idxs[i - minibatch_size:i]], y[idxs[i - minibatch_size:i]]])
+        if shuffle:
+            p = np.random.permutation(l)
+            X, y = X[p], y[p]
+        for i in range(0, l, minibatch_size):
+            yield X[i:i + minibatch_size], y[i:i + minibatch_size]
 
     def __len__(self):
         warnings.warn("usage of len on DataLoader returns length of vocabulary,"
@@ -188,9 +200,6 @@ class DataLoader:
         return len(self.V)
 
     def __str__(self):
-        return "Dataset built off of: {}\nBatch size:  {}\nNumber of batches: {}".format(
-            self.dir, self.batch_size, len(self.data)
+        return "Dataset built off of: {}\nVocab size: {}".format(
+            self.dir, len(self.V)
         )
-
-    def __getitem__(self, index):
-        return self.X_[index], self.y_[index]
