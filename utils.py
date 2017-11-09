@@ -1,26 +1,10 @@
 import os, warnings, re
+import numpy as np
 import torch.utils.data as data
-from sklearn.feature_extraction.text import CountVectorizer
-from spacy.en import English
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelBinarizer
 
-def sentence_tokenize(corpus):
-    '''
-    Spacy sentence tokenizer to split corpus into unique sentences
-    :param corpus: object of type string or list containing exactly 1 string to be tokenized
-    :return: list of strings of sentences
-    '''
-    # Handling different types of input
-    if type(corpus) == str:
-        nlp = English()
-        doc = nlp(corpus)
-        return [sent.string.strip() + ['<EOS>'] for sent in doc.sents]
-    elif type(corpus) == list and len(corpus) == 1:
-        nlp = English()
-        doc = nlp(corpus[0])
-        return [sent.string.strip() for sent in doc.sents]
-    else:
-        raise TypeError("Error: corpus parameter was of type: {}\n"
-                        "Corpus needs to be either a singleton array of a string or a string")
 
 def clean_str(string, TREC=False):
     """
@@ -42,38 +26,119 @@ def clean_str(string, TREC=False):
     string = re.sub(r"\s{2,}", " ", string)
     return string.strip() if TREC else string.strip().lower()
 
-class TypeError(Exception):
-    '''
-    Unnecessary but educational custom error message to use for sentence_tokenize
-    '''
-    def __init__(self, value):
-        self.parameter = value
-    def __str__(self):
-        return repr(self.parameter)
+
+class Cleaner(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        return
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        transformed = []
+        for string in X:
+            transformed.append(clean_str(string))
+        return transformed
+
+
+class Tokenizer(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        return
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        from nltk import word_tokenize
+        tokenized = []
+        for text in X:
+            tokenized.append(word_tokenize(text))
+
+        return tokenized
+
+
+class PadSequencer(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        return
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        lengths = [len(text) for text in X]
+        self.max_len = max(lengths)
+
+        new_X = []
+
+        for text in X:
+            new = text
+            while len(text) < self.max_len:
+                new.append('<PAD>')
+            new_X.append(new)
+
+        return new_X
+
+
+class Indexizer(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        return
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        self.vocab = []
+        for text in X:
+            for w in text:
+                if w not in self.vocab:
+                    self.vocab.append(w)
+        self.idx2w = dict(enumerate(self.vocab))
+        self.w2idx = {w: i for (i, w) in self.idx2w.items()}
+
+        new = []
+        for text in X:
+            new.append([self.w2idx[w] for w in text])
+
+        return np.array(new)
+
 
 class DataLoader:
     '''
     Basic data loader to load in a directory or file of data as well as useful helper functions
     '''
-    def __init__(self, directory, batch_size, shuffle=True, num_workers=2):
+
+    def __init__(self, directory, batch_size=32, shuffle=True, num_workers=2):
         self.dir, self.batch_size = directory, batch_size
 
         # Exception handling for various input formats
-        if os.path.isdir(directory):
-            self._raw_data = self._process_dir(directory)
+        if type(directory) == list:
+            self._raw_data, self.labels = self._process_list(directory)
+        elif os.path.isdir(directory):
+            self._raw_data, self.labels = self._process_dir(directory)
         elif os.path.isfile(directory):
-            self._raw_data = self._process_file(directory)
+            self._raw_data, self.labels = self._process_file(directory)
         assert self._raw_data is not None, \
             "Error: Something's gone wrong, please check the contents of {}\n" \
             "The format must be either a directory of files, a directory of directories," \
             "or a file.".format(directory)
 
-        # Count tensorization
-        self._count_tensor = CountVectorizer().fit_transform(self._raw_data)
-        self.V = self._count_tensor.vocabulary_
+        # Index tensorization
+        text_preprocessor = Pipeline([
+            ('clean', Cleaner()),
+            ('tokenize', Tokenizer()),
+            ('pad', PadSequencer()),
+            ('idx', Indexizer())
+        ])
+        lb = LabelEncoder()
+        one_hot = OneHotEncoder()
 
-        # Use torch's dataloader
-        self.data = data.DataLoader(self._count_tensor, batch_size, shuffle, num_workers)
+        self.X = text_preprocessor.fit_transform(self._raw_data)
+        self.y = lb.fit_transform(self.labels)
+        # self.y = one_hot.fit_transform(lb.fit_transform(self.labels).reshape(-1, 1)).todense()
+
+        self.V = text_preprocessor.named_steps['idx'].vocab
+        self.idx2w = text_preprocessor.named_steps['idx'].idx2w
+        self.w2idx = text_preprocessor.named_steps['idx'].w2idx
 
     def _process_dir(self, directory):
         texts = []
@@ -99,6 +164,24 @@ class DataLoader:
 
         return text
 
+    def _process_list(self, l):
+        '''
+        Process list of lists, where each l[0] = str and l[1] = label
+        Only to be used for testing
+        :param l:
+        '''
+        X = [x[0] for x in l]
+        y = [y[1] for y in l]
+        return X, y
+
+    def batch_data(self, X, y, minibatch_size=32):
+        n = len(X)
+        idxs = np.random.permutation(n)
+        minibatches = []
+
+        for i in range(minibatch_size, n, minibatch_size):
+            minibatches.append([X[idxs[i - minibatch_size:i]], y[idxs[i - minibatch_size:i]]])
+
     def __len__(self):
         warnings.warn("usage of len on DataLoader returns length of vocabulary,"
                       "for number of batches please use len(DataLoader.data),"
@@ -109,3 +192,6 @@ class DataLoader:
         return "Dataset built off of: {}\nBatch size:  {}\nNumber of batches: {}".format(
             self.dir, self.batch_size, len(self.data)
         )
+
+    def __getitem__(self, index):
+        return self.X_[index], self.y_[index]
