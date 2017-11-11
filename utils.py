@@ -107,17 +107,17 @@ class DataLoader:
     Basic data loader to load in a directory or file of data as well as useful helper functions
     '''
 
-    def __init__(self, directory, batch_size=32, shuffle=True, num_workers=2):
-        self.dir, self.batch_size = directory, batch_size
+    def __init__(self, directory):
+        self.dir = directory
 
         # Exception handling for various input formats
         if type(directory) == list:
-            self._raw_data, self.labels = self._process_list(directory)
+            raw_data, labels = self._process_list(directory)
         elif os.path.isdir(directory):
-            self._raw_data, self.labels = self._process_dir(directory)
+            raw_data, labels = self._process_dir(directory)
         elif os.path.isfile(directory):
-            self._raw_data, self.labels = self._process_file(directory)
-        assert self._raw_data is not None, \
+            raw_data, labels = self._process_file(directory)
+        assert raw_data is not None, \
             "Error: Something's gone wrong, please check the contents of {}\n" \
             "The format must be either a directory of files, a directory of directories," \
             "or a file.".format(directory)
@@ -130,11 +130,12 @@ class DataLoader:
             ('idx', Indexizer())
         ])
         lb = LabelEncoder()
-        one_hot = OneHotEncoder()
 
-        self.X = text_preprocessor.fit_transform(self._raw_data)
-        self.y = lb.fit_transform(self.labels)
-        # self.y = one_hot.fit_transform(lb.fit_transform(self.labels).reshape(-1, 1)).todense()
+        self.X = text_preprocessor.fit_transform(raw_data)
+        self.y = lb.fit_transform(labels)
+
+        del raw_data;
+        del labels
 
         self.V = text_preprocessor.named_steps['idx'].vocab
         self.idx2w = text_preprocessor.named_steps['idx'].idx2w

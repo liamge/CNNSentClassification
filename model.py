@@ -4,7 +4,6 @@ import gensim
 import torch.nn as nn
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
-from sys import stdout
 from torch.autograd import Variable
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils.validation import check_is_fitted
@@ -91,7 +90,7 @@ class TextCNN(nn.Module):
         :param data: DataLoader object for a corpus of data
         :return: None
         '''
-        self.word_vecs = gensim.models.KeyedVectors.load_word2vec_format(path, binary=True)
+        word_vecs = gensim.models.KeyedVectors.load_word2vec_format(path, binary=True)
 
         self.embed.padding_idx = data.w2idx['<PAD>']
 
@@ -99,8 +98,8 @@ class TextCNN(nn.Module):
         V = data.V
         W = np.zeros((self.args['vocab_size'], self.args['embed_dim']))
         for (i, w) in enumerate(V):
-            if w in self.word_vecs.vocab:
-                W[i, :] = self.word_vecs[w]
+            if w in word_vecs.vocab:
+                W[i, :] = word_vecs[w]
             else:
                 W[i, :] = np.random.uniform(-0.25, 0.25, self.args['embed_dim'])
 
@@ -111,10 +110,10 @@ class TextCNN(nn.Module):
 
 class TextCNNClassifier(BaseEstimator, ClassifierMixin):
     # Wrapper for interaction with sklearn API
-    def __init__(self, data, num_epochs=5, lr=0.001, dropout=0.5,
+    def __init__(self, num_epochs=5, lr=0.001, dropout=0.5,
                  embed_dim=300, kernel_num=100, kernel_sizes='3,4,5',
                  static=False, multichannel=False, pretrained=None,
-                 vocab_size=100000, class_num=2):
+                 vocab_size=100000, class_num=2, batch_size=32):
 
         # For get_params()/set_params()
         self.num_epochs = num_epochs
@@ -125,61 +124,44 @@ class TextCNNClassifier(BaseEstimator, ClassifierMixin):
         self.kernel_sizes = kernel_sizes
         self.static = static
         self.multichannel = multichannel
-        self.pretrained = pretrained
         self.vocab_size = vocab_size
         self.class_num = class_num
-
-        # Dataloader
-        self.data_ = data
-        self.vocab_size = len(self.data_)
-        self.class_num = len(set(self.data_.y))
-
-        self.set_params(vocab_size=self.vocab_size, class_num=self.class_num)
+        self.batch_size = batch_size
         self.args_ = self.get_params()
-
-        # Delete data from arguments
-        del self.args_['data']
 
         # Initialize model
         self.model_ = TextCNN(args=self.args_)
 
-        # Load pretrained vectors
-        if self.pretrained is not None:
-            self.model_.load_word_vectors(self.args_['pretrained'], self.data_)
-
-    def fit(self, X, y, plot=False):
+    def fit(self, X, y, data, plot=False):
         '''
         Run training on X and y
         :param X: List of indices representing words
         :param y: list of labels
         :return: None
         '''
-        self.X_ = Variable(torch.from_numpy(X))
-        self.y_ = Variable(torch.from_numpy(y))
-
         # Train the model
         criterion = nn.NLLLoss()
         optimizer = torch.optim.Adam([p for p in self.model_.parameters() if p.requires_grad], lr=self.args_['lr'])
 
-        losses = []
+        self.losses = []
 
         # Doesn't need dev iter b/c wrapper can use cross_val_score
         for i in range(self.num_epochs):
+            batches = list(data.batch_data(X, y, minibatch_size=self.batch_size))[:-1]
             print('Epoch {}...'.format(i))
             print("#####################")
-            batches = self.data_.batch_data(X, y, minibatch_size=2)
             batch_loss = []
             for batch in batches:
                 # Zero out cumulative gradients
                 optimizer.zero_grad()
 
-                x, y = batch
-                batch_x, batch_y = Variable(torch.from_numpy(x)), Variable(torch.from_numpy(y))
+                x_, y_ = batch
+                batch_x, batch_y = Variable(torch.from_numpy(x_)), Variable(torch.from_numpy(y_))
 
                 logits = self.model_.forward(batch_x)
                 loss = criterion(logits, batch_y)
 
-                losses.append(loss.data.numpy()[0])
+                self.losses.append(loss.data.numpy()[0])
                 batch_loss.append(loss.data.numpy()[0])
 
                 # Print continuous loss while training
@@ -198,7 +180,7 @@ class TextCNNClassifier(BaseEstimator, ClassifierMixin):
         print('Successfully trained!')
 
         if plot:
-            plt.plot(losses)
+            plt.plot(self.losses)
 
         # Return the classifier
         return self
@@ -206,9 +188,9 @@ class TextCNNClassifier(BaseEstimator, ClassifierMixin):
     def predict(self, X):
 
         # Check is fit had been called
-        check_is_fitted(self, ['X_', 'y_'])
+        check_is_fitted(self, ['losses'])
 
-        return np.argmax(self.model_.forward(Variable(torch.from_numpy(X))).data.numpy(), axis=0)
+        return np.argmax(self.model_.forward(Variable(torch.from_numpy(X))).data.numpy(), axis=1)
 
     def save(self, path):
         '''
@@ -219,7 +201,17 @@ class TextCNNClassifier(BaseEstimator, ClassifierMixin):
         torch.save(self.model_.state_dict(), path)
 
     def load(self, path):
+        self.losses = [] # Define to allow inference
+
         self.model_.load_state_dict(torch.load(path))
+
+    def load_pretrained(self, path, dataloader):
+        '''
+        Loads pretrained word vectors
+        :param path: Path to pretrained word vectors
+        :param dataloader: DataLoader object
+        '''
+        self.model_.load_word_vectors(path, dataloader)
 
     def __call__(self, input):
         return self.predict(input)
