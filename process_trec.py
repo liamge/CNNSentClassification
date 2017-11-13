@@ -23,9 +23,6 @@ def process_dir(directory):
     full_labels = [item for sublist in full_labels for item in sublist]
     full_text = [item for sublist in full_text for item in sublist]
 
-    le = LabelEncoder()
-    full_labels = le.fit_transform(full_labels)
-
     return dict(zip(full_text, full_labels))
 
 if __name__ == '__main__':
@@ -37,16 +34,26 @@ if __name__ == '__main__':
 
     print('Writing data to {}'.format(args['datafile']))
 
-    with open(args['datafile'] + '/train/processed.csv', 'w') as writefile:
+    with open(args['datafile'] + 'train_processed.csv', 'w') as writefile:
         writefile.write('phrase|label')
         writefile.write('\n')
         for (x, y) in train_data.items():
             writefile.write(x + '|' + str(y))
             writefile.write('\n')
 
-    with open(args['datafile'] + '/test/processed.csv', 'w') as writefile:
+    with open(args['datafile'] + 'test_processed.csv', 'w') as writefile:
         writefile.write('phrase|label')
         writefile.write('\n')
+        for (x, y) in test_data.items():
+            writefile.write(x + '|' + str(y))
+            writefile.write('\n')
+
+    with open(args['datafile'] + 'full_processed.csv', 'w') as writefile:
+        writefile.write('phrase|label')
+        writefile.write('\n')
+        for (x, y) in train_data.items():
+            writefile.write(x + '|' + str(y))
+            writefile.write('\n')
         for (x, y) in test_data.items():
             writefile.write(x + '|' + str(y))
             writefile.write('\n')

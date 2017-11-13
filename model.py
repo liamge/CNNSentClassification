@@ -54,6 +54,12 @@ class TextCNN(nn.Module):
         # Convolutional layer
         self.convs = nn.ModuleList([nn.Conv2d(Cin, Cout, (k, d)) for k in Ks])
 
+        # Xavier Initialization
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, np.sqrt(2. / n))
+
         # Dropout layer
         self.dropout = nn.Dropout(args['dropout'])
 
@@ -140,7 +146,7 @@ class TextCNNClassifier(BaseEstimator, ClassifierMixin):
         :return: None
         '''
         # Train the model
-        criterion = nn.NLLLoss()
+        criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam([p for p in self.model_.parameters() if p.requires_grad], lr=self.args_['lr'])
 
         self.losses = []
@@ -156,7 +162,7 @@ class TextCNNClassifier(BaseEstimator, ClassifierMixin):
                 optimizer.zero_grad()
 
                 x_, y_ = batch
-                batch_x, batch_y = Variable(torch.from_numpy(x_)), Variable(torch.from_numpy(y_))
+                batch_x, batch_y = Variable(torch.from_numpy(x_)), Variable(torch.from_numpy(y_), requires_grad=False)
 
                 logits = self.model_.forward(batch_x)
                 loss = criterion(logits, batch_y)

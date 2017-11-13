@@ -134,7 +134,7 @@ class DataLoader:
         self.X = text_preprocessor.fit_transform(raw_data)
         self.y = lb.fit_transform(labels)
 
-        del raw_data;
+        del raw_data
         del labels
 
         self.V = text_preprocessor.named_steps['idx'].vocab
@@ -142,19 +142,25 @@ class DataLoader:
         self.w2idx = text_preprocessor.named_steps['idx'].w2idx
 
     def _process_dir(self, directory):
-        texts = []
+        X = []
+        y = []
 
         for file in os.listdir(directory):
-            if os.path.isdir(file):
-                subdir_texts = self._process_dir(file)
+            if os.path.isdir(directory + '/' + file):
+                subdir_texts, labels = self._process_dir(directory + '/' + file)
                 for text in subdir_texts:
-                    texts.append(text)
-            elif os.path.isfile(file):
-                texts.append(open(file, 'rb').read().decode('utf-8', 'ignore'))
+                    X.append(text)
+                for label in labels:
+                    y.append(label)
+            elif os.path.isfile(directory + '/' + file):
+                sents = open(directory + '/' + file, 'rb').read().decode('utf-8', 'ignore').splitlines()
+                for sent in sents:
+                    X.append(sent)
+                    y.append(directory)
             else:
                 continue
 
-        return texts
+        return X, y
 
     def _process_file(self, file):
         if file[-3:] == 'csv':
@@ -167,6 +173,7 @@ class DataLoader:
     def _process_csv(self, file):
         df = pd.read_csv(file, header=0, delimiter='|')
         df = df[df['phrase'].notnull()]
+        df = df[df['label'].notnull()]
 
         X = df['phrase'].values
         y = df['label'].values
@@ -195,9 +202,6 @@ class DataLoader:
             yield X[i:i + minibatch_size], y[i:i + minibatch_size]
 
     def __len__(self):
-        warnings.warn("usage of len on DataLoader returns length of vocabulary,"
-                      "for number of batches please use len(DataLoader.data),"
-                      "for length of the raw dataset use len(DataLoader._raw_data)", Warning)
         return len(self.V)
 
     def __str__(self):
