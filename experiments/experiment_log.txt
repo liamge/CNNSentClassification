@@ -1,2 +1,0 @@
-experiment_1: sstb_bin, pretrained vecs, 15 epoch, 0.772s
-experiment_2: sstb_bin, random vecs, 15 epochs, 0.699
