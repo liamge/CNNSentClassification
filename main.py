@@ -1,4 +1,6 @@
 import argparse
+import sys
+import numpy as np
 from utils import DataLoader
 from model import TextCNNClassifier
 from sklearn.model_selection import GridSearchCV, cross_val_score, train_test_split
@@ -20,6 +22,8 @@ def parse_args():
     parser.add_argument('-s', '--static', help='Whether to use static word embeddings', default=False, dest='static')
     parser.add_argument('-p', '--pretrained', help='Path to pretrained word vectors,'
                                                    'set if you want to use pretrained', default=None, dest='pretrained')
+    parser.add_argument('-t', '--test', help='Inference on pretrained model or not', default=False, dest='test')
+    parser.add_argument('-n', '--experiment_num', help='Number of experiment', default=1, dest='experiment_num')
     return vars(parser.parse_args())
 
 if __name__ == '__main__':
@@ -27,6 +31,7 @@ if __name__ == '__main__':
     dl = DataLoader(args['datafile'])
     args['multichannel'] = bool(args['multichannel'])
     args['static'] = bool(args['static'])
+    args['test'] = bool(args['test'])
     args['num_epochs'] = int(args['num_epochs'])
     args['batch_size'] = int(args['batch_size'])
     args['vocab_size'] = len(dl)
@@ -41,10 +46,24 @@ if __name__ == '__main__':
 
     clf = TextCNNClassifier(**clf_args)
 
+    if args['test']:
+        clf.load('model_saves/experiment_{}'.format(int(args['experiment_num'])))
+
+        preds = []  # Unwrap model inference for better memory allocation
+
+        for i in range(X_test.shape[0]):
+            print('{} out of {}'.format(i, X_test.shape[0]), end='\r')
+            pred = clf.predict(np.array([X_test[i, :]]))
+            preds.append(pred)
+
+        print("Accuracy: {}".format(accuracy_score(y_test, np.array(preds))))
+        sys.exit()
+
     if args['pretrained'] is not None:
         clf.load_pretrained(args['pretrained'], dl)
 
     clf.fit(X_train, y_train, dl)
 
-    preds = clf.predict(X_test)
-    print("Final accuracy: {}".format(accuracy_score(y_test, preds)))
+    clf.save('model_saves/experiment_{}'.format(int(args['experiment_num'])))
+
+    print("Model saved to: model_saves/experiment_{}".format(int(args['experiment_num'])))
