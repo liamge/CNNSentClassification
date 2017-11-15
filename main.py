@@ -44,6 +44,8 @@ if __name__ == '__main__':
 
     X_train, X_test, y_train, y_test = train_test_split(dl.X, dl.y, random_state=42, test_size=0.33)
 
+    X_train, X_dev, y_train, y_dev = train_test_split(X_train, y_train, random_state=42, test_size=0.2)
+
     clf = TextCNNClassifier(**clf_args)
 
     if args['test']:
@@ -56,13 +58,22 @@ if __name__ == '__main__':
             pred = clf.predict(np.array([X_test[i, :]]))
             preds.append(pred)
 
-        print("Accuracy: {}".format(accuracy_score(y_test, np.array(preds))))
+        print("Experiment {} Accuracy: {}".format(int(args['experiment_num']), accuracy_score(y_test, np.array(preds))))
         sys.exit()
 
     if args['pretrained'] is not None:
         clf.load_pretrained(args['pretrained'], dl)
 
     clf.fit(X_train, y_train, dl)
+
+    preds = []
+
+    for i in range(X_dev.shape[0]):
+        print('{} out of {}'.format(i, X_dev.shape[0]), end='\r')
+        pred = clf.predict(np.array([X_dev[i, :]]))
+        preds.append(pred)
+
+    print("Validation accuracy: {}".format(accuracy_score(y_dev, preds)))
 
     clf.save('model_saves/experiment_{}'.format(int(args['experiment_num'])))
 
