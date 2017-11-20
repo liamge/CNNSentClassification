@@ -13,10 +13,12 @@ class TextCNN(nn.Module):
     def __init__(self, args):
         super(TextCNN, self).__init__()
 
-        # Command line arguments to be parsed into a dictionary before passing to object
+        # Command line arguments to be parsed into a dictionary before passing
+        # to object
         self.args = args
 
-        assert not (self.args['static'] and self.args['multichannel']), "Error: Cannot be both static and multichannel"
+        assert not (self.args['static'] and self.args['multichannel']
+                    ), "Error: Cannot be both static and multichannel"
 
         # Random seed
         torch.manual_seed(42)
@@ -74,16 +76,21 @@ class TextCNN(nn.Module):
             x_static = torch.unsqueeze(x_static, 1)
             x_dynamic = self.embed(x)
             x_dynamic = torch.unsqueeze(x_dynamic, 1)
-            x = torch.cat([x_dynamic, x_static], 1)  # (minibatch x 2 x sentence_len x embed_dim)
+            # (minibatch x 2 x sentence_len x embed_dim)
+            x = torch.cat([x_dynamic, x_static], 1)
         elif self.args['static']:
             x = self.static_embed(x)
-            x = torch.unsqueeze(x, 1)  # (minibatch x 1 x sentence_len x embed_dim
+            # (minibatch x 1 x sentence_len x embed_dim
+            x = torch.unsqueeze(x, 1)
         else:
             x = self.embed(x)  # (minibatch x sentence_len x embed_dim)
-            x = torch.unsqueeze(x, 1)  # (minibatch x input_channels x sentence_len x embed_dim)
+            # (minibatch x input_channels x sentence_len x embed_dim)
+            x = torch.unsqueeze(x, 1)
 
-        x = [F.relu(conv(x)).squeeze(3) for conv in self.convs]  # [N x Cout x output of convolving kernel k] * len(Ks)
-        x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # [N x Cout] * len(Ks)
+        # [N x Cout x output of convolving kernel k] * len(Ks)
+        x = [F.relu(conv(x)).squeeze(3) for conv in self.convs]
+        x = [F.max_pool1d(i, i.size(2)).squeeze(2)
+             for i in x]  # [N x Cout] * len(Ks)
         x = torch.cat(x, 1)  # (N, Cout * len(Ks))
         x = self.dropout(x)
         x = nn.LogSoftmax()(self.linear(x))
@@ -96,7 +103,8 @@ class TextCNN(nn.Module):
         :param data: DataLoader object for a corpus of data
         :return: None
         '''
-        word_vecs = gensim.models.KeyedVectors.load_word2vec_format(path, binary=True)
+        word_vecs = gensim.models.KeyedVectors.load_word2vec_format(
+            path, binary=True)
 
         self.embed.padding_idx = data.w2idx['<PAD>']
 
@@ -107,7 +115,8 @@ class TextCNN(nn.Module):
             if w in word_vecs.vocab:
                 W[i, :] = word_vecs[w]
             else:
-                W[i, :] = np.random.uniform(-0.25, 0.25, self.args['embed_dim'])
+                W[i, :] = np.random.uniform(-0.25,
+                                            0.25, self.args['embed_dim'])
 
         self.embed.weight.data.copy_(torch.from_numpy(W).float())
         if self.args['static'] or self.args['multichannel']:
@@ -147,13 +156,15 @@ class TextCNNClassifier(BaseEstimator, ClassifierMixin):
         '''
         # Train the model
         criterion = nn.CrossEntropyLoss()
-        optimizer = torch.optim.Adam([p for p in self.model_.parameters() if p.requires_grad], lr=self.args_['lr'])
+        optimizer = torch.optim.Adam(
+            [p for p in self.model_.parameters() if p.requires_grad], lr=self.args_['lr'])
 
         self.losses = []
 
         # Doesn't need dev iter b/c wrapper can use cross_val_score
         for i in range(self.num_epochs):
-            batches = list(data.batch_data(X, y, minibatch_size=self.batch_size))[:-1]
+            batches = list(data.batch_data(
+                X, y, minibatch_size=self.batch_size))[:-1]
             print('Epoch {}...'.format(i))
             print("#####################")
             batch_loss = []
@@ -162,7 +173,8 @@ class TextCNNClassifier(BaseEstimator, ClassifierMixin):
                 optimizer.zero_grad()
 
                 x_, y_ = batch
-                batch_x, batch_y = Variable(torch.from_numpy(x_)), Variable(torch.from_numpy(y_), requires_grad=False)
+                batch_x, batch_y = Variable(torch.from_numpy(x_)), Variable(
+                    torch.from_numpy(y_), requires_grad=False)
 
                 logits = self.model_.forward(batch_x)
                 loss = criterion(logits, batch_y)
@@ -196,7 +208,11 @@ class TextCNNClassifier(BaseEstimator, ClassifierMixin):
         # Check is fit had been called
         check_is_fitted(self, ['losses'])
 
-        return np.argmax(self.model_.forward(Variable(torch.from_numpy(X))).data.numpy(), axis=1)
+        return np.argmax(
+            self.model_.forward(
+                Variable(
+                    torch.from_numpy(X))).data.numpy(),
+            axis=1)
 
     def save(self, path):
         '''
@@ -207,7 +223,7 @@ class TextCNNClassifier(BaseEstimator, ClassifierMixin):
         torch.save(self.model_.state_dict(), path)
 
     def load(self, path):
-        self.losses = [] # Define to allow inference
+        self.losses = []  # Define to allow inference
 
         self.model_.load_state_dict(torch.load(path))
 
@@ -232,17 +248,20 @@ class TextCNNClassifier(BaseEstimator, ClassifierMixin):
         preds = []
 
         for i in range(dataloader.X.shape[0]):
-            preds.append(self.model_.forward(np.array([dataloader.X[i, :]])).data.numpy())
+            preds.append(self.model_.forward(
+                np.array([dataloader.X[i, :]])).data.numpy())
 
         preds = np.array(preds).squeeze(axis=1)
 
         max_indices = np.argmax(preds, axis=0)
 
         for i in range(len(max_indices)):
-            sent_idxs = dataloader.X[max_indices[i],:]
-            sent_str = ' '.join([dataloader.idx2w[j] for j in sent_idxs if j != dataloader.w2idx['<PAD>']])
+            sent_idxs = dataloader.X[max_indices[i], :]
+            sent_str = ' '.join([dataloader.idx2w[j]
+                                 for j in sent_idxs if j != dataloader.w2idx['<PAD>']])
             print('class {} (true {}): {}'.format(dataloader._lb.inverse_transform(i),
-                                                  dataloader._lb.inverse_transform(dataloader.y[max_indices[i]]),
+                                                  dataloader._lb.inverse_transform(
+                                                      dataloader.y[max_indices[i]]),
                                                   sent_str))
 
     def __call__(self, input):

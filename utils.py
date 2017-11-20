@@ -1,4 +1,6 @@
-import os, warnings, re
+import os
+import warnings
+import re
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -111,7 +113,7 @@ class DataLoader:
         self.dir = directory
 
         # Exception handling for various input formats
-        if type(directory) == list:
+        if isinstance(directory, list):
             raw_data, labels = self._process_list(directory)
         elif os.path.isdir(directory):
             raw_data, labels = self._process_dir(directory)
@@ -147,13 +149,18 @@ class DataLoader:
 
         for file in os.listdir(directory):
             if os.path.isdir(directory + '/' + file):
-                subdir_texts, labels = self._process_dir(directory + '/' + file)
+                subdir_texts, labels = self._process_dir(
+                    directory + '/' + file)
                 for text in subdir_texts:
                     X.append(text)
                 for label in labels:
                     y.append(label)
             elif os.path.isfile(directory + '/' + file):
-                sents = open(directory + '/' + file, 'rb').read().decode('utf-8', 'ignore').splitlines()
+                sents = open(
+                    directory + '/' + file,
+                    'rb').read().decode(
+                    'utf-8',
+                    'ignore').splitlines()
                 for sent in sents:
                     X.append(sent)
                     y.append(directory)
@@ -193,7 +200,9 @@ class DataLoader:
     def batch_data(self, X, y, minibatch_size=32, shuffle=True):
         l = len(X)
         if minibatch_size > l:
-            raise AttributeError("Error, {} must be smaller than {}".format(minibatch_size, l))
+            raise AttributeError(
+                "Error, {} must be smaller than {}".format(
+                    minibatch_size, l))
 
         if shuffle:
             p = np.random.permutation(l)
