@@ -83,12 +83,26 @@ if __name__ == '__main__':
     preds = []
 
     for i in range(X_dev.shape[0]):
-        print('{} out of {}'.format(i, X_dev.shape[0]), end='\r')
-        pred = clf.predict(np.array([X_dev[i, :]]))
+        pred = clf.model_.forward(np.array([X_dev[i, :]])).data.numpy()
         preds.append(pred)
 
-    print("Validation accuracy: {}".format(accuracy_score(y_dev, preds)))
+    preds = np.array(preds).squeeze(axis=1)
+
+    rounded_preds = np.argmax(preds, axis=1)
+
+    print("Validation accuracy: {}".format(accuracy_score(y_dev, rounded_preds)))
 
     clf.save('model_saves/experiment_{}'.format(int(args['experiment_num'])))
 
     print("Model saved to: model_saves/experiment_{}".format(int(args['experiment_num'])))
+
+    print("Finding Val Examples that Maximize Classes...")
+
+    max_indices = np.argmax(preds, axis=0)
+
+    for i in range(len(max_indices)):
+        sent_idxs = X_dev[max_indices[i], :]
+        sent_str = ' '.join([dl.idx2w[j] for j in sent_idxs if j != dl.w2idx['<PAD>']])
+        print('class {} (true {}): {}'.format(dl._lb.inverse_transform(i),
+                                              dl._lb.inverse_transform(y_dev[max_indices[i]]),
+                                              sent_str))

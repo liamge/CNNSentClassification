@@ -219,5 +219,31 @@ class TextCNNClassifier(BaseEstimator, ClassifierMixin):
         '''
         self.model_.load_word_vectors(path, dataloader)
 
+    def maximize_classes(self, dataloader):
+        '''
+        Finds examples from the dataset that maximize the probability of a given class
+        :param dataloader: DataLoader object containing corpus
+        :return: N/a
+        '''
+
+        # Check is fit had been called
+        check_is_fitted(self, ['losses'])
+
+        preds = []
+
+        for i in range(dataloader.X.shape[0]):
+            preds.append(self.model_.forward(np.array([dataloader.X[i, :]])).data.numpy())
+
+        preds = np.array(preds).squeeze(axis=1)
+
+        max_indices = np.argmax(preds, axis=0)
+
+        for i in range(len(max_indices)):
+            sent_idxs = dataloader.X[max_indices[i],:]
+            sent_str = ' '.join([dataloader.idx2w[j] for j in sent_idxs if j != dataloader.w2idx['<PAD>']])
+            print('class {} (true {}): {}'.format(dataloader._lb.inverse_transform(i),
+                                                  dataloader._lb.inverse_transform(dataloader.y[max_indices[i]]),
+                                                  sent_str))
+
     def __call__(self, input):
         return self.predict(input)

@@ -129,10 +129,10 @@ class DataLoader:
             ('pad', PadSequencer()),
             ('idx', Indexizer())
         ])
-        lb = LabelEncoder()
+        self._lb = LabelEncoder()
 
         self.X = text_preprocessor.fit_transform(raw_data)
-        self.y = lb.fit_transform(labels)
+        self.y = self._lb.fit_transform(labels)
 
         del raw_data
         del labels
