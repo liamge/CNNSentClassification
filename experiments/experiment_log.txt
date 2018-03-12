@@ -1,0 +1,12 @@
+experiment_1: sstb_bin, pretrained vecs, nll loss, 15 epoch, 0.772
+experiment_2: sstb_bin, random vecs, nll loss, 15 epochs, 0.699
+experiment_3: ran out of memory, redo later w/ no xavier initialization
+experiment_4: poli_data, multichannel, xavier, cross entropy, 15 epochs, 0.717
+experiment_5: poli_data, pretrained vecs, xavier, cross entropy, 15 epochs, 0.686
+experiment_6: poli_data, random vecs, xavier, cross entropy, 15 epochs, 0.705
+experiment_7: sstb, pretrained vecs, cross entropy, 15 epochs, batch size 50, 0.569
+experiment_8: sstb, multichannel, cross entropy, xavier, 15 epochs, batch size 50, 0.584
+experiment_9: sstb, random, cross entropy, xavier, 15 epochs, batch size 50, 0.516 
+experiment_10: mr, random, cross entropy, xavier, 15 epochs, batch size 50, 0.526
+experiment_11: mr, pretrained, cross entropy, xavier, 15 epochs, batch size 50, 0.568
+experiment_12: mr, multichannel, cross entropy, xavier, 15 epochs, batch size 50, 0.544

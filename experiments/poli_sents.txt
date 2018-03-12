@@ -1,0 +1,4 @@
+Experiment 4 Accuracy: 0.717377860235003
+Finding Test Examples that Maximize Classes...
+class c (true l): i 'd like to see us take the fight right back into the teeth of that wool clad conservative wolf
+class l (true l): she enrolled at the university of idaho in moscow for an academic year starting in august 1984 and then attended matanuska susitna college in alaska in the fall of 1985
